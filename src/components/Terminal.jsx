@@ -1,130 +1,44 @@
 import { useState, useCallback } from 'react'
 import CRTOverlay from './CRTOverlay'
 import BootScreen from './BootScreen'
-import ContentView from './ContentView'
-import ProjectsView from './ProjectsView'
-import MenuEntry from './MenuEntry'
-import { useTypewriter } from '../hooks/useTypewriter'
-import { MAIN_MENU, SECTIONS, PROJECT_CATEGORIES } from '../data/sections'
+import Header from './Header'
+import FileBrowser from './FileBrowser'
+import PreviewPanel from './PreviewPanel'
+import StatusBar from './StatusBar'
 
 /**
- * Main terminal shell. Manages:
- * - Boot sequence → main menu
- * - Navigation stack (history-based back button)
- * - Routing to static sections and dynamic Supabase views
+ * Main terminal shell — split panel layout.
+ * Boot sequence → full screen terminal OS with file browser + preview.
  */
 export default function Terminal() {
-  const [phase, setPhase] = useState('boot')
-  const [history, setHistory] = useState(['main'])
+  const [booted, setBooted] = useState(false)
+  const [selection, setSelection] = useState(null)
 
-  const current = history[history.length - 1]
-
-  const navigate = useCallback((key) => {
-    setHistory((h) => [...h, key])
+  const handleSelect = useCallback((item) => {
+    setSelection(item)
   }, [])
-
-  const goBack = useCallback(() => {
-    setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h))
-  }, [])
-
-  function renderContent() {
-    if (current === 'main') {
-      return <MainMenuView onNavigate={navigate} />
-    }
-
-    if (current === 'projects') {
-      return (
-        <ContentView
-          title="PROJECTS"
-          path="PROJECTS"
-          lines={['PROJECT ARCHIVE — CLASSIFIED LEVEL: PUBLIC', '————————————————————————————————————']}
-          entries={PROJECT_CATEGORIES}
-          onBack={goBack}
-          onNavigate={navigate}
-        />
-      )
-    }
-
-    const projectCat = PROJECT_CATEGORIES.find((c) => c.key === current)
-    if (projectCat) {
-      return (
-        <ProjectsView
-          title={projectCat.label.replace(/[\[\]]/g, '')}
-          table={projectCat.table}
-          category={projectCat.category}
-          onBack={goBack}
-        />
-      )
-    }
-
-    const section = SECTIONS[current]
-    if (section) {
-      return (
-        <ContentView
-          title={section.title}
-          path={section.title.replace(/ /g, '_')}
-          lines={section.content}
-          onBack={goBack}
-        />
-      )
-    }
-
-    return (
-      <ContentView
-        title="ERROR"
-        path="ERROR"
-        lines={['> SECTION NOT FOUND', '> RETURNING TO MAIN MENU...']}
-        onBack={goBack}
-      />
-    )
-  }
 
   return (
-    <div className="monitor">
-      <div className="monitor__bezel">
-        <div className="monitor__led" />
+    <>
+      <CRTOverlay />
 
-        <div className="screen">
-          <CRTOverlay />
+      {!booted && (
+        <BootScreen onComplete={() => setBooted(true)} />
+      )}
 
-          <div className="terminal">
-            {phase === 'boot' ? (
-              <BootScreen onComplete={() => setPhase('terminal')} />
-            ) : (
-              renderContent()
-            )}
+      {booted && (
+        <div className="shell">
+          <Header />
+          <div className="main">
+            <FileBrowser
+              onSelect={handleSelect}
+              selectedId={selection?.data?.id}
+            />
+            <PreviewPanel selection={selection} />
           </div>
+          <StatusBar />
         </div>
-      </div>
-    </div>
-  )
-}
-
-function MainMenuView({ onNavigate }) {
-  const { displayed, done } = useTypewriter(MAIN_MENU.header, 14)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="terminal__title">{'>'} {MAIN_MENU.title}</div>
-
-      <div className="terminal__content">
-        {displayed.map((line, i) => (
-          <div key={i} className="terminal__line">{line}</div>
-        ))}
-
-        {done && (
-          <div style={{ marginTop: '8px' }}>
-            {MAIN_MENU.entries.map((entry) => (
-              <MenuEntry
-                key={entry.key}
-                label={entry.label}
-                desc={entry.desc}
-                onClick={() => onNavigate(entry.key)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   )
 }
