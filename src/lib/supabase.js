@@ -22,7 +22,7 @@ export async function fetchProjects() {
 }
 
 /**
- * Fetch all works (gallery items) ordered by display_order
+ * Fetch all works ordered by display_order
  */
 export async function fetchWorks() {
   const { data, error } = await supabase
@@ -38,14 +38,28 @@ export async function fetchWorks() {
 }
 
 /**
- * Fetch works filtered by category
+ * Fetch works by portfolio category.
+ * Maps our category keys to the actual table columns:
+ *   - 'catwees'        → client = 'Catwees'
+ *   - 'artist-posters' → client = 'Personal' + description = 'Album poster design'
+ *   - 'game-posters'   → client = 'Personal' + description = 'Game poster design'
  */
 export async function fetchWorksByCategory(category) {
-  const { data, error } = await supabase
+  let query = supabase
     .from('works')
     .select('*')
-    .eq('category', category)
-    .order('display_order', { ascending: true })
+
+  if (category === 'catwees') {
+    query = query.eq('client', 'Catwees')
+  } else if (category === 'artist-posters') {
+    query = query.eq('client', 'Personal').eq('description', 'Album poster design')
+  } else if (category === 'game-posters') {
+    query = query.eq('client', 'Personal').eq('description', 'Game poster design')
+  }
+
+  query = query.order('display_order', { ascending: true })
+
+  const { data, error } = await query
 
   if (error) {
     console.error(`Error fetching works (${category}):`, error)
