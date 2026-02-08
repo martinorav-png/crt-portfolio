@@ -1,7 +1,76 @@
 /**
  * CRT Terminal Sound Effects
- * All sounds generated via Web Audio API — no files needed.
+ * Uses real audio files for authentic sounds.
+ * Files expected in /public/sounds/
+ *
+ * - select.mp3     → Hacking pass good (menu click / enter)
+ * - back.mp3       → Hacking pass bad (back button)
+ * - typing.mp3     → Digital typing loop (typewriter effect)
+ * - boot.mp3       → Hard drive startup (plays on boot)
+ * - hum-loop.mp3   → Hard drive idle hum (loops after boot)
  */
+
+// ── Preloaded audio elements ──────────────────────────────────
+
+const selectSound = new Audio('/sounds/select.mp3')
+const backSound = new Audio('/sounds/back.mp3')
+const typingSound = new Audio('/sounds/typing.mp3')
+const bootSound = new Audio('/sounds/boot.mp3')
+const humLoop = new Audio('/sounds/hum-loop.mp3')
+
+// Set volumes
+selectSound.volume = 0.35
+backSound.volume = 0.35
+typingSound.volume = 0.12
+bootSound.volume = 0.25
+humLoop.volume = 0.08
+
+// Hum loops forever
+humLoop.loop = true
+
+// Preload all
+selectSound.preload = 'auto'
+backSound.preload = 'auto'
+typingSound.preload = 'auto'
+bootSound.preload = 'auto'
+humLoop.preload = 'auto'
+
+// ── Boot sound state ──────────────────────────────────────────
+// Browsers block autoplay until user clicks. We set up a
+// one-time listener that plays the boot sound on first interaction.
+
+let bootStarted = false
+
+function startBootOnInteraction() {
+  if (bootStarted) return
+  bootStarted = true
+
+  bootSound.currentTime = 0
+  bootSound.play().catch(() => {})
+
+  // Start hum loop when boot nears the end
+  bootSound.addEventListener('ended', () => {
+    humLoop.currentTime = 0
+    humLoop.play().catch(() => {})
+  })
+
+  // Remove all listeners
+  document.removeEventListener('click', startBootOnInteraction)
+  document.removeEventListener('keydown', startBootOnInteraction)
+  document.removeEventListener('touchstart', startBootOnInteraction)
+}
+
+/**
+ * Call this once on mount. Sets up listeners that will play
+ * the boot sound on the user's first interaction.
+ */
+export function initBootSound() {
+  document.addEventListener('click', startBootOnInteraction, { once: false })
+  document.addEventListener('keydown', startBootOnInteraction, { once: false })
+  document.addEventListener('touchstart', startBootOnInteraction, { once: false })
+}
+
+// ── Hover sound (kept as Web Audio — too short for a file) ────
 
 let audioCtx = null
 
@@ -12,37 +81,6 @@ function getCtx() {
   return audioCtx
 }
 
-/**
- * Keystroke — very subtle tick
- */
-let lastKeystroke = 0
-export function playKeystroke() {
-  // Throttle to max 1 per 80ms so it doesn't spam
-  const now = performance.now()
-  if (now - lastKeystroke < 80) return
-  lastKeystroke = now
-
-  const ctx = getCtx()
-  const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
-
-  osc.connect(gain)
-  gain.connect(ctx.destination)
-
-  osc.type = 'square'
-  osc.frequency.setValueAtTime(800 + Math.random() * 400, ctx.currentTime)
-  osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.02)
-
-  gain.gain.setValueAtTime(0.008, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02)
-
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + 0.02)
-}
-
-/**
- * Menu hover — soft blip
- */
 export function playHover() {
   const ctx = getCtx()
   const osc = ctx.createOscillator()
@@ -61,106 +99,44 @@ export function playHover() {
   osc.stop(ctx.currentTime + 0.05)
 }
 
-/**
- * Menu select — confirmation beep (two-tone)
- */
+// ── Menu select (hacking pass good) ──────────────────────────
+
 export function playSelect() {
-  const ctx = getCtx()
-
-  const osc1 = ctx.createOscillator()
-  const gain1 = ctx.createGain()
-  osc1.connect(gain1)
-  gain1.connect(ctx.destination)
-  osc1.type = 'square'
-  osc1.frequency.setValueAtTime(800, ctx.currentTime)
-  gain1.gain.setValueAtTime(0.02, ctx.currentTime)
-  gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
-  osc1.start(ctx.currentTime)
-  osc1.stop(ctx.currentTime + 0.08)
-
-  const osc2 = ctx.createOscillator()
-  const gain2 = ctx.createGain()
-  osc2.connect(gain2)
-  gain2.connect(ctx.destination)
-  osc2.type = 'square'
-  osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.07)
-  gain2.gain.setValueAtTime(0.001, ctx.currentTime)
-  gain2.gain.setValueAtTime(0.02, ctx.currentTime + 0.07)
-  gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
-  osc2.start(ctx.currentTime + 0.07)
-  osc2.stop(ctx.currentTime + 0.15)
+  selectSound.currentTime = 0
+  selectSound.play().catch(() => {})
 }
 
-/**
- * Back/cancel — descending tone
- */
+// ── Back button (hacking pass bad) ───────────────────────────
+
 export function playBack() {
-  const ctx = getCtx()
-  const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
-
-  osc.connect(gain)
-  gain.connect(ctx.destination)
-
-  osc.type = 'square'
-  osc.frequency.setValueAtTime(1000, ctx.currentTime)
-  osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1)
-
-  gain.gain.setValueAtTime(0.02, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
-
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + 0.1)
+  backSound.currentTime = 0
+  backSound.play().catch(() => {})
 }
 
-/**
- * Boot sequence — rising hum with beep
- */
+// ── Typing sound ─────────────────────────────────────────────
+
+let typingPlaying = false
+
+export function playKeystroke() {
+  if (!typingPlaying) {
+    typingSound.currentTime = 0
+    typingSound.loop = true
+    typingSound.play().catch(() => {})
+    typingPlaying = true
+  }
+}
+
+export function stopTyping() {
+  if (typingPlaying) {
+    typingSound.pause()
+    typingSound.currentTime = 0
+    typingPlaying = false
+  }
+}
+
+// ── Deprecated — kept for backwards compat ───────────────────
+
 export function playBoot() {
-  const ctx = getCtx()
-
-  const osc1 = ctx.createOscillator()
-  const gain1 = ctx.createGain()
-  osc1.connect(gain1)
-  gain1.connect(ctx.destination)
-  osc1.type = 'sawtooth'
-  osc1.frequency.setValueAtTime(60, ctx.currentTime)
-  osc1.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.5)
-  gain1.gain.setValueAtTime(0.015, ctx.currentTime)
-  gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
-  osc1.start(ctx.currentTime)
-  osc1.stop(ctx.currentTime + 0.5)
-
-  const osc2 = ctx.createOscillator()
-  const gain2 = ctx.createGain()
-  osc2.connect(gain2)
-  gain2.connect(ctx.destination)
-  osc2.type = 'sine'
-  osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.4)
-  gain2.gain.setValueAtTime(0.001, ctx.currentTime)
-  gain2.gain.setValueAtTime(0.02, ctx.currentTime + 0.4)
-  gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7)
-  osc2.start(ctx.currentTime + 0.4)
-  osc2.stop(ctx.currentTime + 0.7)
-}
-
-/**
- * Error / not found — buzzy low tone
- */
-export function playError() {
-  const ctx = getCtx()
-  const osc = ctx.createOscillator()
-  const gain = ctx.createGain()
-
-  osc.connect(gain)
-  gain.connect(ctx.destination)
-
-  osc.type = 'sawtooth'
-  osc.frequency.setValueAtTime(150, ctx.currentTime)
-
-  gain.gain.setValueAtTime(0.025, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
-
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + 0.2)
+  // Boot is now handled by initBootSound + user interaction
+  // This is a no-op to avoid breaking existing imports
 }

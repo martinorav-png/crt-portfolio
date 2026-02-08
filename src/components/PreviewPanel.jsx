@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SECTIONS } from '../data/sections'
 import { useTypewriter } from '../hooks/useTypewriter'
-import { playSelect } from '../lib/sounds'
+import { playSelect, playKeystroke, stopTyping } from '../lib/sounds'
+import { optimizeUrl } from '../lib/cloudinary'
 
 /**
  * Right panel — shows either:
- * - Image/video preview with metadata (for project files)
+ * - Image/video preview with metadata and download protection
  * - Typed text content (for about, skills, contact sections)
  * - Empty placeholder (when nothing selected)
  */
 export default function PreviewPanel({ selection }) {
-  // No selection
   if (!selection) {
     return (
       <div className="main__right">
@@ -29,23 +29,44 @@ export default function PreviewPanel({ selection }) {
     )
   }
 
-  // Static text section (about, skills, contact)
   if (selection.type === 'section') {
     return <TextPreview sectionKey={selection.key} />
   }
 
-  // File preview (image/video from Supabase)
   return <FilePreview file={selection} />
 }
 
-/**
- * Text content preview for static sections.
- */
 function TextPreview({ sectionKey }) {
   const section = SECTIONS[sectionKey]
   if (!section) return null
 
   const { displayed, done, skip } = useTypewriter(section.content, 8)
+
+  // Start typing sound
+  useEffect(() => {
+    if (displayed.length > 0 && !done) {
+      playKeystroke()
+    }
+  }, [displayed])
+
+  // Stop typing sound when done
+  useEffect(() => {
+    if (done) {
+      stopTyping()
+    }
+  }, [done])
+
+  // Stop typing on unmount (navigating away mid-type)
+  useEffect(() => {
+    return () => stopTyping()
+  }, [])
+
+  function handleSkip() {
+    if (!done) {
+      stopTyping()
+      skip()
+    }
+  }
 
   return (
     <div className="main__right">
@@ -53,7 +74,7 @@ function TextPreview({ sectionKey }) {
         <span className="preview__title">{sectionKey + '.txt'}</span>
         <span className="preview__label">TEXT VIEWER</span>
       </div>
-      <div className="preview__text-area" onClick={!done ? skip : undefined}>
+      <div className="preview__text-area" onClick={handleSkip}>
         {displayed.map((line, i) => (
           <div key={i} className="preview__text-line">{line}</div>
         ))}
@@ -67,9 +88,6 @@ function TextPreview({ sectionKey }) {
   )
 }
 
-/**
- * File preview with image, metadata, and analysis panels.
- */
 function FilePreview({ file }) {
   const [metaLoaded, setMetaLoaded] = useState(false)
   const [analysisLoaded, setAnalysisLoaded] = useState(false)
@@ -77,6 +95,8 @@ function FilePreview({ file }) {
   const item = file.data || {}
   const isVideo = item.image_url?.endsWith('.mp4') || item.image_url?.endsWith('.webm')
   const title = item.title || file.name
+
+  const previewUrl = isVideo ? item.image_url : optimizeUrl(item.image_url, 'preview')
 
   function loadMeta() {
     playSelect()
@@ -90,28 +110,40 @@ function FilePreview({ file }) {
 
   return (
     <div className="main__right">
-      {/* Header */}
       <div className="preview__header">
         <span className="preview__title">{file.name}</span>
         <span className="preview__label">INFORMATION ANALYSIS</span>
       </div>
 
-      {/* Image/video area */}
       <div className="preview__image-area">
         {item.image_url ? (
           isVideo ? (
-            <video src={item.image_url} controls autoPlay loop muted />
+            <video
+              src={item.image_url}
+              controls
+              autoPlay
+              loop
+              muted
+              controlsList="nodownload"
+              onContextMenu={(e) => e.preventDefault()}
+            />
           ) : (
-            <img src={item.image_url} alt={title} />
+            <div className="preview__image-protected">
+              <img
+                src={previewUrl}
+                alt={title}
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+              />
+              <div className="preview__image-shield" />
+            </div>
           )
         ) : (
           <div className="preview__placeholder">{'[ NO PREVIEW AVAILABLE ]'}</div>
         )}
       </div>
 
-      {/* Meta + Analysis panels */}
       <div className="preview__meta-area">
-        {/* Left: Meta Data */}
         <div className="preview__meta-section">
           <div className="preview__meta-header">
             <span className="preview__meta-title">Meta Data</span>
@@ -157,7 +189,6 @@ function FilePreview({ file }) {
           )}
         </div>
 
-        {/* Right: Historical Analysis */}
         <div className="preview__meta-section">
           <div className="preview__meta-header">
             <span className="preview__meta-title">Historical Analysis</span>
@@ -207,7 +238,6 @@ function FilePreview({ file }) {
         </div>
       </div>
 
-      {/* Bottom stats */}
       <div className="preview__stats-area">
         <span className="preview__stat">
           {'retrieved asset '}
@@ -216,7 +246,7 @@ function FilePreview({ file }) {
         {item.image_url && (
           <button
             className="preview__stat-action"
-            onClick={() => window.open(item.image_url, '_blank')}
+            onClick={() => window.open(optimizeUrl(item.image_url, 'full'), '_blank')}
           >
             {'[ display asset ]'}
           </button>
