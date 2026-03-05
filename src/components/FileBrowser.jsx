@@ -14,6 +14,7 @@ const PROJECT_FOLDERS = [
   { name: 'client_work/', type: 'folder', size: '--', date: '08 Feb 26 00:00', perms: 'drwxr-xr-x', source: 'catwees' },
   { name: 'artist_posters/', type: 'folder', size: '--', date: '08 Feb 26 00:00', perms: 'drwxr-xr-x', source: 'artist-posters' },
   { name: 'game_posters/', type: 'folder', size: '--', date: '08 Feb 26 00:00', perms: 'drwxr-xr-x', source: 'game-posters' },
+  { name: 'game_project_wip/', type: 'folder', size: '--', date: '08 Feb 26 00:00', perms: 'drwxr-xr-x', source: 'game-wip' },
 ]
 
 function formatSize(bytes) {

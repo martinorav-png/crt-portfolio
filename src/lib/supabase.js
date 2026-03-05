@@ -43,6 +43,7 @@ export async function fetchWorks() {
  *   - 'catwees'        → client = 'Catwees'
  *   - 'artist-posters' → client = 'Personal' + description = 'Album poster design'
  *   - 'game-posters'   → client = 'Personal' + description = 'Game poster design'
+ *   - 'game-wip'       → client = 'Personal' + description = 'Game project WIP'
  */
 export async function fetchWorksByCategory(category) {
   let query = supabase
@@ -55,6 +56,8 @@ export async function fetchWorksByCategory(category) {
     query = query.eq('client', 'Personal').eq('description', 'Album poster design')
   } else if (category === 'game-posters') {
     query = query.eq('client', 'Personal').eq('description', 'Game poster design')
+  } else if (category === 'game-wip') {
+    query = query.eq('client', 'Personal').eq('description', 'Game project WIP')
   }
 
   query = query.order('display_order', { ascending: true })
