@@ -8,16 +8,14 @@ const SOCIAL_LINKS = [
 ]
 
 /**
- * Top header bar — boot log on left, sysinfo + profile photo on right.
+ * Top header bar — compact boot log + sysinfo + profile photo.
  */
 export default function Header() {
   return (
     <div className="header">
       <div className="header__boot">
-        <div className="header__boot-line header__boot-line--ok">User System Check</div>
-        <div className="header__boot-line header__boot-line--ok">Initializing portfolio kernel...</div>
-        <div className="header__boot-line header__boot-line--ok">Mounting /projects</div>
-        <div className="header__boot-line header__boot-line--ok">Loading thumbnails...</div>
+        <div className="header__boot-line header__boot-line--ok">System initialized</div>
+        <div className="header__boot-line header__boot-line--ok">Showcase loaded</div>
 
         <div className="header__prompt">
           <span className="header__prompt-text">Martin@portfolio:~$</span>
@@ -29,14 +27,11 @@ export default function Header() {
       <div className="header__right">
         <div className="header__sysinfo">
           <div className="header__sysinfo-line">
-            <span className="header__sysinfo-label">{'sysinfo: '}</span>
-          </div>
-          <div className="header__sysinfo-line">
             Digital Product Designer @ EKA
           </div>
           <div className="header__sysinfo-line">
             <span className="header__sysinfo-label">{'loc: '}</span>
-            Estonia
+            Tallinn, Estonia
           </div>
           <div className="header__sysinfo-line">
             <span className="header__sysinfo-label">{'focus: '}</span>

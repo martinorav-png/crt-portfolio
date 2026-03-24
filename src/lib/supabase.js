@@ -70,3 +70,100 @@ export async function fetchWorksByCategory(category) {
   }
   return data
 }
+
+/**
+ * Fetch featured items for the homepage showcase.
+ * Pulls from both 'projects' and 'works' tables,
+ * prioritizing the best work from each category.
+ *
+ * Returns items with a category_label for display.
+ */
+export async function fetchFeatured() {
+  const results = []
+
+  // Fetch web apps (these are always strong — shipped products)
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('*')
+    .order('display_order', { ascending: true })
+    .limit(2)
+
+  if (projects) {
+    results.push(...projects.map(p => ({ ...p, category_label: 'WEB APP' })))
+  }
+
+  // Fetch best client work (limit to top 2)
+  const { data: clientWork } = await supabase
+    .from('works')
+    .select('*')
+    .eq('client', 'Catwees')
+    .order('display_order', { ascending: true })
+    .limit(2)
+
+  if (clientWork) {
+    results.push(...clientWork.map(w => ({ ...w, category_label: 'CLIENT' })))
+  }
+
+  // Fetch game project WIP (top 1)
+  const { data: gameWip } = await supabase
+    .from('works')
+    .select('*')
+    .eq('client', 'Personal')
+    .eq('description', 'Game project WIP')
+    .order('display_order', { ascending: true })
+    .limit(1)
+
+  if (gameWip) {
+    results.push(...gameWip.map(w => ({ ...w, category_label: 'GAME DEV' })))
+  }
+
+  // Fetch best poster (top 1)
+  const { data: posters } = await supabase
+    .from('works')
+    .select('*')
+    .eq('client', 'Personal')
+    .in('description', ['Album poster design', 'Game poster design'])
+    .order('display_order', { ascending: true })
+    .limit(1)
+
+  if (posters) {
+    results.push(...posters.map(w => ({ ...w, category_label: 'POSTER' })))
+  }
+
+  return results
+}
+
+/**
+ * Unified category fetcher for the flattened file browser.
+ * Maps folder sources to the right query.
+ */
+export async function fetchProjectsByCategory(source) {
+  if (source === 'projects') {
+    return await fetchProjects()
+  }
+
+  if (source === 'selected') {
+    // Selected client work — curated subset
+    // Fetch all Catwees work, but the display_order controls curation
+    return await fetchWorksByCategory('catwees')
+  }
+
+  if (source === 'posters') {
+    // Merge artist + game posters into one folder
+    const [artists, games] = await Promise.all([
+      fetchWorksByCategory('artist-posters'),
+      fetchWorksByCategory('game-posters'),
+    ])
+    return [...games, ...artists]
+  }
+
+  if (source === 'game-wip') {
+    return await fetchWorksByCategory('game-wip')
+  }
+
+  if (source === 'featured') {
+    return await fetchFeatured()
+  }
+
+  return []
+}

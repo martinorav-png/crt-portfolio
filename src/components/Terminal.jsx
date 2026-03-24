@@ -9,6 +9,7 @@ import StatusBar from './StatusBar'
 /**
  * Main terminal shell — split panel layout.
  * Boot sequence → full screen terminal OS with file browser + preview.
+ * Homepage now auto-loads a featured showcase in the preview panel.
  */
 export default function Terminal() {
   const [booted, setBooted] = useState(false)

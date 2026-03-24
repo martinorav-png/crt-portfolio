@@ -3,35 +3,6 @@
  * Projects/gallery sections are loaded dynamically from Supabase.
  */
 
-export const BOOT_LINES = [
-  'ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL',
-  'COPYRIGHT 2077 ROBCO INDUSTRIES',
-  '',
-  'MARTIN ORAV — PERSONAL TERMINAL v2.6.0',
-  '',
-  '> INITIALIZING SYSTEM...',
-  '> LOADING USER PROFILE...',
-  '> ESTABLISHING UPLINK...',
-  '',
-  'CONNECTION ESTABLISHED.',
-  '',
-]
-
-export const MAIN_MENU = {
-  title: 'MAIN MENU',
-  header: [
-    'WELCOME TO MARTIN ORAV\'S TERMINAL',
-    'DIGITAL PRODUCT DESIGN // EKA 2026',
-    '————————————————————————————————————',
-  ],
-  entries: [
-    { key: 'about', label: '[ABOUT ME]', desc: 'Personal dossier' },
-    { key: 'projects', label: '[PROJECTS]', desc: 'Portfolio archive' },
-    { key: 'skills', label: '[SKILLS & RESUME]', desc: 'Technical specs' },
-    { key: 'contact', label: '[CONTACT]', desc: 'Open comm channel' },
-  ],
-}
-
 export const SECTIONS = {
   about: {
     title: 'ABOUT ME',
@@ -44,16 +15,14 @@ export const SECTIONS = {
       '',
       '————————————————————————————————————',
       '',
-      'My name is Martin and I am a Digital Product',
-      'Design student at the Estonian Academy of Arts',
-      'with a focus on graphic design, interaction',
-      'design, game design and more.',
+      'I design and build digital experiences',
+      'that feel human. From product interfaces',
+      'to game worlds to interactive prototypes —',
+      'I care about the details that make',
+      'technology quietly satisfying to use.',
       '',
-      'I care about making technology feel human -',
-      'to create experiences that are clear, meaningful,',
-      'and quietly satisfying to use.',
-      '',
-      'Good design makes the world a nicer place :)',
+      'Currently focused on interaction design,',
+      'game UI/UX, and creative development.',
       '',
       '————————————————————————————————————',
       '',
@@ -63,26 +32,23 @@ export const SECTIONS = {
   },
 
   skills: {
-    title: 'SKILLS & RESUME',
+    title: 'SKILLS & TOOLS',
     content: [
-      'TECHNICAL SPECIFICATIONS',
-      '————————————————————————————————————',
+      'DESIGN',
+      '  Figma ...................... ████████████████ 95%',
+      '  Adobe Photoshop ........... ███████████████░ 90%',
+      '  Adobe Illustrator ......... ██████████████░░ 85%',
+      '  Adobe After Effects ....... ████████████░░░░ 75%',
       '',
-      'DESIGN TOOLS:',
-      '  Adobe Photoshop',
-      '  Adobe Illustrator',
-      '  Adobe After Effects',
-      '  Figma',
+      'DEVELOPMENT',
+      '  HTML / CSS ................ ████████████████ 95%',
+      '  JavaScript ................ ███████████████░ 90%',
+      '  React / Vite .............. ██████████████░░ 85%',
+      '  Arduino ................... ███████████░░░░░ 70%',
       '',
-      'DEVELOPMENT:',
-      '  HTML / CSS',
-      '  JavaScript',
-      '  React / Vite',
-      '  Arduino',
-      '',
-      'AUDIO:',
-      '  FL Studio',
-      '  Ableton',
+      'AUDIO',
+      '  FL Studio ................. ████████████░░░░ 75%',
+      '  Ableton ................... ██████████░░░░░░ 65%',
       '',
       '————————————————————————————————————',
       '',
@@ -92,16 +58,7 @@ export const SECTIONS = {
       '',
       'LANGUAGES:',
       '  Estonian ................ Native',
-      '  English ................ Fluent C2 level',
-      '',
-      '————————————————————————————————————',
-      '',
-      'SPECIALIZATIONS:',
-      '  • Human-centered & empathic design',
-      '  • Interactive systems & prototyping',
-      '  • Game UI/UX & world-building',
-      '  • Physical computing (Arduino)',
-      '  • Advertisement & poster design',
+      '  English ................ Fluent C2',
     ],
   },
 
@@ -129,7 +86,7 @@ export const SECTIONS = {
       '————————————————————————————————————',
       '',
       'For freelance inquiries, contact through',
-      'MARORA DESIGN OÜ.',
+      'MARORA DESIGN OU.',
       '',
       '> Awaiting transmission...',
     ],
@@ -137,11 +94,11 @@ export const SECTIONS = {
 }
 
 /**
- * Project categories that get fetched from Supabase.
+ * Featured projects to show on homepage showcase.
+ * These are fetched from Supabase and displayed as thumbnails
+ * immediately when the portfolio loads — no clicks needed.
  */
-export const PROJECT_CATEGORIES = [
-  { key: 'webapps', label: '[WEB APPS]', desc: 'Interactive applications', table: 'projects' },
-  { key: 'catwees', label: '[CLIENT WORK]', desc: 'Catwees Honda designs', category: 'catwees' },
-  { key: 'artist-posters', label: '[ARTIST POSTERS]', desc: 'Album & music artwork', category: 'artist-posters' },
-  { key: 'game-posters', label: '[GAME POSTERS]', desc: 'Video game artwork', category: 'game-posters' },
-]
+export const FEATURED_CONFIG = {
+  // Number of items to show in the homepage showcase
+  maxItems: 6,
+}

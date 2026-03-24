@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import { SECTIONS } from '../data/sections'
 import { useTypewriter } from '../hooks/useTypewriter'
-import { playSelect, playKeystroke, stopTyping } from '../lib/sounds'
+import { playKeystroke, stopTyping } from '../lib/sounds'
 import { optimizeUrl } from '../lib/cloudinary'
+import { fetchFeatured } from '../lib/supabase'
 
 /**
  * Right panel — shows either:
- * - Image/video preview with metadata and download protection
+ * - Showcase grid (homepage — featured project thumbnails)
+ * - File preview with auto-loaded metadata
  * - Typed text content (for about, skills, contact sections)
- * - Empty placeholder (when nothing selected)
  */
 export default function PreviewPanel({ selection }) {
   if (!selection) {
@@ -23,10 +24,12 @@ export default function PreviewPanel({ selection }) {
             {'[ SELECT A FILE OR FOLDER ]'}
           </div>
         </div>
-        <EmptyMeta />
-        <EmptyStats />
       </div>
     )
+  }
+
+  if (selection.type === 'showcase') {
+    return <ShowcaseGrid />
   }
 
   if (selection.type === 'section') {
@@ -36,27 +39,163 @@ export default function PreviewPanel({ selection }) {
   return <FilePreview file={selection} />
 }
 
+/**
+ * Homepage showcase — loads featured projects and displays
+ * them as a visual grid immediately. No clicks needed.
+ */
+function ShowcaseGrid() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(null)
+
+  useEffect(() => {
+    async function load() {
+      const data = await fetchFeatured()
+      setItems(data)
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  if (expanded) {
+    return (
+      <div className="main__right">
+        <div className="preview__header">
+          <span className="preview__title">{expanded.title}</span>
+          <button
+            className="preview__close-btn"
+            onClick={() => setExpanded(null)}
+          >
+            {'[ BACK TO SHOWCASE ]'}
+          </button>
+        </div>
+        <div className="preview__image-area">
+          {expanded.image_url && (
+            expanded.image_url.endsWith('.mp4') || expanded.image_url.endsWith('.webm') ? (
+              <video
+                src={expanded.image_url}
+                controls
+                autoPlay
+                loop
+                muted
+                controlsList="nodownload"
+                onContextMenu={(e) => e.preventDefault()}
+              />
+            ) : (
+              <div className="preview__image-protected">
+                <img
+                  src={optimizeUrl(expanded.image_url, 'full')}
+                  alt={expanded.title}
+                  draggable={false}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+                <div className="preview__image-shield" />
+              </div>
+            )
+          )}
+        </div>
+        <div className="preview__detail-bar">
+          {expanded.description && (
+            <span className="preview__detail-text">{expanded.description}</span>
+          )}
+          {expanded.project_url && (
+            <a
+              href={expanded.project_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="preview__live-link"
+            >
+              {'[ LIVE LINK ]'}
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="main__right">
+      <div className="preview__header">
+        <span className="preview__title">{'~/showcase'}</span>
+        <span className="preview__label">FEATURED WORK</span>
+      </div>
+
+      <div className="showcase">
+        {loading ? (
+          <div className="showcase__loading">{'> Loading showcase...'}</div>
+        ) : items.length === 0 ? (
+          <div className="showcase__loading">{'> No featured items found.'}</div>
+        ) : (
+          <div className="showcase__grid">
+            {items.map((item) => {
+              const isVideo = item.image_url?.endsWith('.mp4') || item.image_url?.endsWith('.webm')
+              return (
+                <div
+                  key={item.id}
+                  className="showcase__card"
+                  onClick={() => setExpanded(item)}
+                >
+                  <div className="showcase__card-image">
+                    {isVideo ? (
+                      <video
+                        src={item.image_url}
+                        muted
+                        loop
+                        playsInline
+                        onMouseEnter={(e) => e.target.play()}
+                        onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0 }}
+                      />
+                    ) : item.image_url ? (
+                      <img
+                        src={optimizeUrl(item.image_url, 'thumbnail')}
+                        alt={item.title}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="showcase__card-empty">{'[ NO PREVIEW ]'}</div>
+                    )}
+                    <div className="showcase__card-scanline" />
+                  </div>
+                  <div className="showcase__card-info">
+                    <span className="showcase__card-title">{item.title}</span>
+                    {item.category_label && (
+                      <span className="showcase__card-tag">{item.category_label}</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="showcase__hint">
+          {'> Browse folders on the left to explore all work'}
+          <br />
+          {'> Click any image above to expand'}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TextPreview({ sectionKey }) {
   const section = SECTIONS[sectionKey]
   if (!section) return null
 
   const { displayed, done, skip } = useTypewriter(section.content, 8)
 
-  // Start typing sound
   useEffect(() => {
     if (displayed.length > 0 && !done) {
       playKeystroke()
     }
-  }, [displayed])
+  }, [displayed, done])
 
-  // Stop typing sound when done
   useEffect(() => {
     if (done) {
       stopTyping()
     }
   }, [done])
 
-  // Stop typing on unmount (navigating away mid-type)
   useEffect(() => {
     return () => stopTyping()
   }, [])
@@ -88,25 +227,16 @@ function TextPreview({ sectionKey }) {
   )
 }
 
+/**
+ * File preview — metadata auto-loads immediately.
+ * No more "Analyze Data" buttons.
+ */
 function FilePreview({ file }) {
-  const [metaLoaded, setMetaLoaded] = useState(false)
-  const [analysisLoaded, setAnalysisLoaded] = useState(false)
-
   const item = file.data || {}
   const isVideo = item.image_url?.endsWith('.mp4') || item.image_url?.endsWith('.webm')
   const title = item.title || file.name
 
   const previewUrl = isVideo ? item.image_url : optimizeUrl(item.image_url, 'preview')
-
-  function loadMeta() {
-    playSelect()
-    setMetaLoaded(true)
-  }
-
-  function loadAnalysis() {
-    playSelect()
-    setAnalysisLoaded(true)
-  }
 
   return (
     <div className="main__right">
@@ -143,165 +273,45 @@ function FilePreview({ file }) {
         )}
       </div>
 
+      {/* Auto-loaded metadata — no buttons needed */}
       <div className="preview__meta-area">
         <div className="preview__meta-section">
           <div className="preview__meta-header">
             <span className="preview__meta-title">Meta Data</span>
-            {!metaLoaded ? (
-              <button className="preview__meta-action" onClick={loadMeta}>
-                Analyze Data
-              </button>
-            ) : (
-              <button className="preview__meta-action" onClick={loadMeta}>
-                Re-analyze Data
-              </button>
-            )}
+            <span className="preview__meta-status">LOADED</span>
           </div>
-          {metaLoaded ? (
-            <>
-              <div className="preview__meta-line preview__meta-line--ok">
-                Running Asset Meta Analysis...
-              </div>
-              <div className="preview__meta-line preview__meta-line--ok">
-                Exposing Metrics...
-              </div>
-              <div className="preview__meta-line preview__meta-line--ok">
-                Analysis Complete - dumping info:
-              </div>
-              <br />
-              <div className="preview__meta-line">{'Title: ' + title}</div>
-              {item.description && (
-                <div className="preview__meta-line">{'Desc: ' + item.description}</div>
-              )}
-              {item.client && (
-                <div className="preview__meta-line">{'Client: ' + item.client}</div>
-              )}
-              {item.category && (
-                <div className="preview__meta-line">{'Category: ' + item.category}</div>
-              )}
-              <div className="preview__meta-line">{'Type: ' + (isVideo ? 'Video' : 'Image')}</div>
-            </>
-          ) : (
-            <>
-              <div className="preview__meta-line">{'[ metadata pending ]'}</div>
-              <div className="preview__meta-line">{'[ click Analyze Data ]'}</div>
-            </>
+          <div className="preview__meta-line">{'Title: ' + title}</div>
+          {item.description && (
+            <div className="preview__meta-line">{'Desc: ' + item.description}</div>
           )}
+          {item.client && (
+            <div className="preview__meta-line">{'Client: ' + item.client}</div>
+          )}
+          <div className="preview__meta-line">{'Type: ' + (isVideo ? 'Video' : 'Image')}</div>
         </div>
 
         <div className="preview__meta-section">
           <div className="preview__meta-header">
-            <span className="preview__meta-title">Historical Analysis</span>
-            {!analysisLoaded ? (
-              <button className="preview__meta-action" onClick={loadAnalysis}>
-                Analyze Asset
-              </button>
-            ) : (
-              <span className="preview__meta-title" style={{ opacity: 0.4 }}>Complete</span>
-            )}
+            <span className="preview__meta-title">Actions</span>
           </div>
-          {analysisLoaded ? (
-            <>
-              {item.description ? (
-                <div className="preview__meta-line">{item.description}</div>
-              ) : (
-                <div className="preview__meta-line">
-                  {'Asset catalogued in portfolio archive. No additional historical data available.'}
-                </div>
-              )}
-              {item.project_url && (
-                <>
-                  <br />
-                  <div className="preview__meta-line">{'Live deployment:'}</div>
-                  <a
-                    href={item.project_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: 'var(--phosphor)',
-                      textDecoration: 'underline',
-                      textUnderlineOffset: '3px',
-                      fontSize: '12px',
-                    }}
-                  >
-                    {item.project_url}
-                  </a>
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="preview__meta-line">{'[ analysis pending ]'}</div>
-              <div className="preview__meta-line">{'[ click Analyze Asset ]'}</div>
-            </>
+          {item.image_url && (
+            <button
+              className="preview__action-btn"
+              onClick={() => window.open(optimizeUrl(item.image_url, 'full'), '_blank')}
+            >
+              {'[ VIEW FULL SIZE ]'}
+            </button>
+          )}
+          {item.project_url && (
+            <button
+              className="preview__action-btn"
+              onClick={() => window.open(item.project_url, '_blank')}
+            >
+              {'[ OPEN LIVE SITE ]'}
+            </button>
           )}
         </div>
       </div>
-
-      <div className="preview__stats-area">
-        <span className="preview__stat">
-          {'retrieved asset '}
-          <span className="preview__stat-value">{item.image_url ? '1' : '0'}</span>
-        </span>
-        {item.image_url && (
-          <button
-            className="preview__stat-action"
-            onClick={() => window.open(optimizeUrl(item.image_url, 'full'), '_blank')}
-          >
-            {'[ display asset ]'}
-          </button>
-        )}
-        {item.project_url && (
-          <>
-            <span className="preview__stat">
-              {'live link '}
-              <span className="preview__stat-value">1</span>
-            </span>
-            <button
-              className="preview__stat-action"
-              onClick={() => window.open(item.project_url, '_blank')}
-            >
-              {'[ open link ]'}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function EmptyMeta() {
-  return (
-    <div className="preview__meta-area">
-      <div className="preview__meta-section">
-        <div className="preview__meta-header">
-          <span className="preview__meta-title">Meta Data</span>
-          <span className="preview__meta-title" style={{ opacity: 0.3 }}>Analyze Data</span>
-        </div>
-        <div className="preview__meta-line">{'[ no file selected ]'}</div>
-      </div>
-      <div className="preview__meta-section">
-        <div className="preview__meta-header">
-          <span className="preview__meta-title">Historical Analysis</span>
-          <span className="preview__meta-title" style={{ opacity: 0.3 }}>Analyze Asset</span>
-        </div>
-        <div className="preview__meta-line">{'[ no file selected ]'}</div>
-      </div>
-    </div>
-  )
-}
-
-function EmptyStats() {
-  return (
-    <div className="preview__stats-area">
-      <span className="preview__stat">
-        {'retrieved asset '}
-        <span className="preview__stat-value">0</span>
-      </span>
-      <span className="preview__stat">
-        {'media found '}
-        <span className="preview__stat-value">0</span>
-      </span>
     </div>
   )
 }
